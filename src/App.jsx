@@ -18,7 +18,7 @@ function DraggableItem({ id, label }) {
 }
 
 // Canvas where elements get dropped
-function Canvas({ elements, onTextChange, onImageChange }) {
+function Canvas({ elements, onTextChange, onImageChange, onDelete }) {
   const { setNodeRef } = useDroppable({ id: 'canvas' });
 
   const handleImageUpload = (e, index) => {
@@ -51,15 +51,23 @@ function Canvas({ elements, onTextChange, onImageChange }) {
           )}
           {el.type === 'image' && (
             <>
-              {el.src ? (
-                <img src={el.src} alt="Uploaded" className="max-w-full h-auto" />
-              ) : (
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleImageUpload(e, index)}
-                />
-              )}
+            {el.src ? (
+              <div className="relative">
+                <img src={el.src} alt="Uploaded" className="max-w-full h-auto rounded" />
+                <button
+                  onClick={() => onDelete(index)}
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleImageUpload(e, index)}
+              />
+            )}
             </>
           )}
         </div>
@@ -94,6 +102,10 @@ export default function App() {
     setElements(newElements);
   };
 
+  const handleDelete = (index) => {
+    setElements((prev) => prev.filter((_, i) => i !== index));
+  };
+  
   return (
     <DndContext onDragEnd={handleDragEnd}>
       <div className="flex min-h-screen">
@@ -106,6 +118,7 @@ export default function App() {
           elements={elements}
           onTextChange={handleTextChange}
           onImageChange={handleImageChange}
+          onDelete={handleDelete}
         />
       </div>
     </DndContext>
