@@ -1,10 +1,23 @@
 import React, { useState } from "react";
-import { DndContext, useDraggable, useDroppable } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable"; //Added for swapping support
+import {
+  DndContext,
+  closestCenter,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  DragOverlay,
+  useDroppable,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
-// Draggable toolbox item
+// Toolbox item
 const DraggableItem = ({ id, label }) => {
-  const { attributes, listeners, setNodeRef } = useDraggable({ id });
+  const { attributes, listeners, setNodeRef } = useSortable({ id });
   return (
     <div
       ref={setNodeRef}
@@ -17,140 +30,167 @@ const DraggableItem = ({ id, label }) => {
   );
 };
 
-// Canvas area
-const Canvas = ({ elements, setElements, onTextChange, onImageChange, onDelete }) => {
-  const { setNodeRef: setDropRef} = useDroppable({ id: "canvas" });
+// Canvas droppable area
+const CanvasWrapper = ({ children }) => {
+  const { setNodeRef } = useDroppable({ id: "canvas" });
+  return (
+    <div ref={setNodeRef} id="canvas" className="flex-1 min-h-screen p-4 border bg-gray-50">
+      <h2 className="text-lg font-bold mb-4">Canvas</h2>
+      {children}
+    </div>
+  );
+};
 
-  const handleImageUpload = (e, index) => {
+// Canvas Item with sorting
+const SortableCanvasItem = ({ el, index, onTextChange, onImageChange, onDelete, setElements }) => {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: index.toString() });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       const url = URL.createObjectURL(file);
       onImageChange(index, url);
     }
   };
-  return ( 
-  <div ref={setDropRef} className="flex-1 min-h-screen p-4 border bg-gray-50">
-      <h2 className="text-lg font-bold mb-4">Canvas</h2>
-      {elements.map((el, index) => {
-        const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({ id: index.toString() });
 
-        return (
-    <div 
-    ref={setDragRef}
-    key={index.toString()} 
-    id={index.toString()} 
-    {...listeners}
-    {...attributes}
-    className="p-2 my-2 border bg-white rounded shadow" 
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="p-2 my-2 border bg-white rounded shadow relative"
     >
-          {el.type === "text" && (
-            <div className="relative">
+      {el.type === "text" && (
+        <div>
+          <input
+            type="text"
+            value={el.content}
+            onChange={(e) => onTextChange(index, e.target.value)}
+            placeholder="Enter text"
+            className="w-full p-1 border rounded"
+            draggable={false}
+          />
+          <DeleteButton onClick={() => onDelete(index)} />
+        </div>
+      )}
+
+      {el.type === "image" && (
+        el.src ? (
+          <div>
+            <img
+              src={el.src}
+              alt="Uploaded"
+              className="max-w-full h-auto rounded"
+              draggable={false}
+            />
+            <DeleteButton onClick={() => onDelete(index)} />
+          </div>
+        ) : (
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="block"
+          />
+        )
+      )}
+
+      {el.type === "button" && (
+        <div>
+          {el.editing ? (
             <input
               type="text"
               value={el.content}
               onChange={(e) => onTextChange(index, e.target.value)}
-              placeholder="Enter text"
-              className="w-full p-1 border rounded"
+              onBlur={() => {
+                const updated = [...setElements];
+                updated[index].editing = false;
+                setElements(updated);
+              }}
+              placeholder="Enter button text"
+              className="w-full p-1 border rounded text-black"
+              autoFocus
+              draggable={false}
             />
+          ) : (
             <button
-      onClick={() => onDelete(index)}
-      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow"
-    >
-      ✕
-    </button>
-  </div>
+              onClick={() => {
+                const updated = [...setElements];
+                updated[index].editing = true;
+                setElements(updated);
+              }}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              draggable={false}
+            >
+              {el.content.trim() || "Click Me"}
+            </button>
           )}
-
-          {el.type === "image" && (
-            el.src ? (
-              <div className="relative">
-                <img src={el.src} alt="Uploaded" className="max-w-full h-auto rounded" />
-                <button
-                  onClick={() => onDelete(index)}
-                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow"
-                >✕</button>
-              </div>
-            ) : (
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, index)}
-              />
-            )
-          )}
-
-          {el.type === "button" && (
-            <div className="relative">
-            {el.editing ? (
-              <input
-                type="text"
-                value={el.content}
-                onChange={(e) => onTextChange(index, e.target.value)}
-                onBlur={() => {
-                  const updated = [...elements];
-                  updated[index].editing = false;
-                  setElements(updated);
-                }}
-                placeholder="Enter button text"
-                className="w-full p-1 border rounded text-black"
-                autoFocus
-              />
-            ) : (
-              <button
-                onClick={() => {
-                  const updated = [...elements];
-                  updated[index].editing = true;
-                  setElements(updated);
-                }}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 cursor-pointer"
-              >
-                {el.content.trim() || "Click Me"}
-              </button>
-            )}
-            <button
-            onClick={() => onDelete(index)}
-            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow"
-          >
-            ✕
-          </button>
+          <DeleteButton onClick={() => onDelete(index)} />
         </div>
-          )}   
-        </div>
+      )}
+    </div>
   );
-  })}
-  </div>
-);
 };
-   
+
+const DeleteButton = ({ onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow"
+  >
+    ✕
+  </button>
+);
 
 // Main App
 export default function App() {
   const [elements, setElements] = useState([]);
+  const [activeId, setActiveId] = useState(null);
 
-  const handleDragEnd = ({ over, active }) => {
-    if (!over) return;
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragStart = (event) => {
+    setActiveId(event.active.id);
+  };
+
+  const handleDragEnd = ({ active, over }) => {
+    if (!over) {
+      setActiveId(null);
+      return;
+    }
 
     const activeId = active.id;
     const overId = over.id;
-    const isToolboxItem = isNaN(parseInt(activeId));
+
+    const isToolboxItem = activeId.startsWith("toolbox-");
 
     if (overId === "canvas" && isToolboxItem) {
-      // Adding new element from toolbox
+      // Add new component from toolbox
+      const type = activeId.replace("toolbox-", "");
       setElements((prev) => [
         ...prev,
         {
-          type: active.id,
-          content: active.id === "button" ? "Click Me" : "",
+          type, 
+          content: type === "button" ? "Click Me" : "",
           src: "",
-          editing: active.id === "button",
+          editing:  type === "button",
         },
       ]);
-    }else if (!isToolboxItem && !isNaN(parseInt(overId)) && activeId !== overId) {
-      // Swapping elements inside canvas
+    } else if (!isToolboxItem && activeId !== overId) {
       const oldIndex = parseInt(activeId);
       const newIndex = parseInt(overId);
       setElements((prev) => arrayMove(prev, oldIndex, newIndex));
     }
+
+    setActiveId(null);
   };
 
   const handleTextChange = (index, value) => {
@@ -170,22 +210,48 @@ export default function App() {
   };
 
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="flex min-h-screen">
         <div className="w-1/4 bg-gray-100 p-4">
           <h2 className="text-lg font-bold mb-4">Toolbox</h2>
           {["text", "image", "button"].map((id) => (
-            <DraggableItem key={id} id={id} label={id.charAt(0).toUpperCase() + id.slice(1)} />
+            <DraggableItem
+              key={`toolbox-${id}`}
+              id={`toolbox-${id}`}
+              label={id.charAt(0).toUpperCase() + id.slice(1)}
+            />
           ))}
         </div>
-        <Canvas
-          elements={elements}
-          setElements={setElements}
-          onTextChange={handleTextChange}
-          onImageChange={handleImageChange}
-          onDelete={handleDelete}
-        />
-      </div>
+        
+          <CanvasWrapper>
+          <SortableContext items={elements.map((_, i) => i.toString())}>
+            {elements.map((el, index) => (
+              <SortableCanvasItem
+                key={index}
+                el={el}
+                index={index}
+                onTextChange={handleTextChange}
+                onImageChange={handleImageChange}
+                onDelete={handleDelete}
+                setElements={setElements}
+              />
+            ))}
+          </SortableContext>
+          </CanvasWrapper>
+        </div>
+    
+      <DragOverlay>
+        {activeId && !activeId.includes("canvas") && (
+          <div className="p-2 m-2 border bg-white rounded shadow">
+            {activeId.replace("toolbox-", "")}
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
   );
 }
