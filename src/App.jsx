@@ -42,7 +42,7 @@ const CanvasWrapper = ({ children }) => {
 };
 
 // Canvas Item with sorting
-const SortableCanvasItem = ({ el, index, onTextChange, onImageChange, onDelete, setElements }) => {
+const SortableCanvasItem = ({ el, index, elements, onTextChange, onImageChange, onDelete, setElements }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: index.toString() });
 
   const style = {
@@ -109,7 +109,7 @@ const SortableCanvasItem = ({ el, index, onTextChange, onImageChange, onDelete, 
               value={el.content}
               onChange={(e) => onTextChange(index, e.target.value)}
               onBlur={() => {
-                const updated = [...setElements];
+                const updated = [...elements];
                 updated[index].editing = false;
                 setElements(updated);
               }}
@@ -121,7 +121,7 @@ const SortableCanvasItem = ({ el, index, onTextChange, onImageChange, onDelete, 
           ) : (
             <button
               onClick={() => {
-                const updated = [...setElements];
+                const updated = [...elements];
                 updated[index].editing = true;
                 setElements(updated);
               }}
@@ -235,6 +235,7 @@ export default function App() {
                 key={index}
                 el={el}
                 index={index}
+                elements={elements}
                 onTextChange={handleTextChange}
                 onImageChange={handleImageChange}
                 onDelete={handleDelete}
@@ -246,11 +247,38 @@ export default function App() {
         </div>
     
       <DragOverlay>
-        {activeId && !activeId.includes("canvas") && (
-          <div className="p-2 m-2 border bg-white rounded shadow">
-            {activeId.replace("toolbox-", "")}
-          </div>
-        )}
+      {activeId && activeId.includes("toolbox-") && (() => {
+        const type = activeId.replace("toolbox-", "");
+    
+        if (type === "button") {
+          return (
+            <button className="px-4 py-2 bg-blue-500 text-white rounded shadow">
+              Click Me
+            </button>
+          );
+        }
+    
+        if (type === "text") {
+          return (
+            <input
+              type="text"
+              placeholder="Enter text"
+              className="w-full p-1 border rounded shadow"
+              readOnly
+            />
+          );
+        }
+    
+        if (type === "image") {
+          return (
+            <div className="p-2 border rounded shadow bg-gray-100 text-center">
+              <span className="text-sm text-gray-500">Image</span>
+            </div>
+          );
+        }
+    
+        return null;
+      })()}
       </DragOverlay>
     </DndContext>
   );
