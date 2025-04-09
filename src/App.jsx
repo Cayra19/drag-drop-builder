@@ -34,6 +34,7 @@ const Canvas = ({ elements, setElements, onTextChange, onImageChange, onDelete }
       {elements.map((el, index) => (
         <div key={index} className="p-2 my-2 border bg-white rounded shadow">
           {el.type === "text" && (
+            <div className="relative">
             <input
               type="text"
               value={el.content}
@@ -41,6 +42,13 @@ const Canvas = ({ elements, setElements, onTextChange, onImageChange, onDelete }
               placeholder="Enter text"
               className="w-full p-1 border rounded"
             />
+            <button
+      onClick={() => onDelete(index)}
+      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow"
+    >
+      ✕
+    </button>
+  </div>
           )}
 
           {el.type === "image" && (
@@ -62,7 +70,8 @@ const Canvas = ({ elements, setElements, onTextChange, onImageChange, onDelete }
           )}
 
           {el.type === "button" && (
-            el.editing ? (
+            <div className="relative">
+            {el.editing ? (
               <input
                 type="text"
                 value={el.content}
@@ -87,8 +96,18 @@ const Canvas = ({ elements, setElements, onTextChange, onImageChange, onDelete }
               >
                 {el.content.trim() || "Click Me"}
               </button>
-            )
+            )}
+            <button
+            onClick={() => onDelete(index)}
+            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs shadow"
+          >
+            ✕
+          </button>
+        </div>
           )}
+          
+
+
         </div>
       ))}
     </div>
