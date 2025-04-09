@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { DndContext, useDraggable, useDroppable } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable"; //Added for swapping support
 
 // Draggable toolbox item
 const DraggableItem = ({ id, label }) => {
@@ -18,7 +19,7 @@ const DraggableItem = ({ id, label }) => {
 
 // Canvas area
 const Canvas = ({ elements, setElements, onTextChange, onImageChange, onDelete }) => {
-  const { setNodeRef } = useDroppable({ id: "canvas" });
+  const { setNodeRef: setDropRef} = useDroppable({ id: "canvas" });
 
   const handleImageUpload = (e, index) => {
     const file = e.target.files[0];
@@ -27,12 +28,21 @@ const Canvas = ({ elements, setElements, onTextChange, onImageChange, onDelete }
       onImageChange(index, url);
     }
   };
-
-  return (
-    <div ref={setNodeRef} className="flex-1 min-h-screen p-4 border bg-gray-50">
+  return ( 
+  <div ref={setDropRef} className="flex-1 min-h-screen p-4 border bg-gray-50">
       <h2 className="text-lg font-bold mb-4">Canvas</h2>
-      {elements.map((el, index) => (
-        <div key={index} className="p-2 my-2 border bg-white rounded shadow">
+      {elements.map((el, index) => {
+        const { attributes, listeners, setNodeRef: setDragRef } = useDraggable({ id: index.toString() });
+
+        return (
+    <div 
+    ref={setDragRef}
+    key={index.toString()} 
+    id={index.toString()} 
+    {...listeners}
+    {...attributes}
+    className="p-2 my-2 border bg-white rounded shadow" 
+    >
           {el.type === "text" && (
             <div className="relative">
             <input
@@ -104,22 +114,28 @@ const Canvas = ({ elements, setElements, onTextChange, onImageChange, onDelete }
             ✕
           </button>
         </div>
-          )}
-          
-
-
+          )}   
         </div>
-      ))}
-    </div>
   );
+  })}
+  </div>
+);
 };
+   
 
 // Main App
 export default function App() {
   const [elements, setElements] = useState([]);
 
   const handleDragEnd = ({ over, active }) => {
-    if (over?.id === "canvas") {
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+    const isToolboxItem = isNaN(parseInt(activeId));
+
+    if (overId === "canvas" && isToolboxItem) {
+      // Adding new element from toolbox
       setElements((prev) => [
         ...prev,
         {
@@ -129,6 +145,11 @@ export default function App() {
           editing: active.id === "button",
         },
       ]);
+    }else if (!isToolboxItem && !isNaN(parseInt(overId)) && activeId !== overId) {
+      // Swapping elements inside canvas
+      const oldIndex = parseInt(activeId);
+      const newIndex = parseInt(overId);
+      setElements((prev) => arrayMove(prev, oldIndex, newIndex));
     }
   };
 
